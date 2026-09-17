@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<!-- saved from url=(0012)about:srcdoc -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+				
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<style>
+					body {
+						background-color: white; /* Ensure the iframe has a white background */
+					}
+				</style>
+				<script>
+					var Z_CDN_WHITELIST = [
+						'cdn.jsdelivr.net',
+						'cdnjs.cloudflare.com',
+						'cdn.tailwindcss.com',
+						'unpkg.com',
+						'fonts.googleapis.com',
+						'd3js.org',
+						'cdn.babylonjs.com',
+						'html2canvas.hertzen.com',
+						'code.jquery.com',
+						'cdn.datatables.net',
+						'kit.fontawesome.com',
+						'code.createjs.com',
+						'cdn.plot.ly',
+						'fonts.gstatic.com',
+						'www.rgraph.net',
+						'api.mapbox.com',
+						'polyfill.io',
+						'cdn.quilljs.com',
+						'picsum.photos',
+						'esm.sh'
+					];
+
+					function z_isUrlInWhitelist(url) {
+						if (!url || typeof url !== 'string') {
+							return false;
+						}
+						try {
+							const urlObj = new URL(url);
+							const hostname = urlObj.hostname;
+							return Z_CDN_WHITELIST.some(domain => hostname === domain);
+						} catch (e) {
+							return false;
+						}
+					}
+
+						function z_proxyCdnUrl(url) {
+						if (!url || !url.startsWith('http')) {
+							return url;
+						}
+							if (!z_isUrlInWhitelist(url)) {
+							return url;
+						}
+						if (!url.startsWith('https://artifacts-cdn.chatglm.site/')) {
+							return 'https://artifacts-cdn.chatglm.site/' + url;
+						}
+						return url;
+					}
+					
+					// 增强版外部链接拦截 - 适合放在模板字符串中
+					document.addEventListener('click', function (ev) {
+						try {
+							const anchor = ev.target?.closest?.('a[href]') || null;
+							if (!anchor) return;
+
+							let href = anchor.getAttribute('href')?.trim() || '';
+							if (!href) return;
+
+							if (href.startsWith('javascript:')) return;
+
+							// 新需求：href="#" 的链接完全阻止跳转和任何行为
+							if (href === '#') {
+								ev.preventDefault();
+								return;
+							}
+
+							// 处理其他内部锚点（如 #about、#contact 等）
+							if (href.startsWith('#')) {
+								const rawId = href.slice(1);
+								if (!rawId) return;
+
+								const id = decodeURIComponent(rawId);
+								const target = 
+									document.getElementById(id) ||
+									document.querySelector('a[name="' + id.replace(/"/g, '\"') + '"]') ||
+									document.querySelector('[name="' + id.replace(/"/g, '\"') + '"]');
+
+								if (target && target.scrollIntoView) {
+									ev.preventDefault();
+									try {
+										history.pushState(null, '', href);
+									} catch (e) {}
+									target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+								}
+								return;
+							}
+
+							// 处理外部链接
+							let url;
+							try {
+								url = new URL(href, window.location.href);
+							} catch (e) {
+								return;
+							}
+
+							if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+							const isExternal = url.hostname !== window.location.hostname;
+
+							if (isExternal || anchor.getAttribute('target') === '_blank') {
+								ev.preventDefault();
+								window.open(url.toString(), '_blank', 'noopener,noreferrer');
+							}
+
+						} catch (e) {
+							// 出错时不阻止默认行为
+						}
+					}, true);
+
+					// 1. 暴力清除函数：从 DOM 层面抹除 onclick 属性
+					var Z_removeInlineOnclick = function () {
+						// 专门锁定 href="#" 且带有 onclick 的 a 标签
+						const targetedLinks = document.querySelectorAll('a[href="#"][onclick]');
+						for (let i = 0; i < targetedLinks.length; i++) {
+							targetedLinks[i].removeAttribute('onclick');
+							targetedLinks[i].onclick = null; // 确保 JS 层的赋值也被清理
+						}
+					};
+					// 3. 动态监测：防止页面通过异步加载重新生成带 onclick 的元素
+					var z_observer = new MutationObserver(function () {
+						Z_removeInlineOnclick();
+					});
+
+					z_observer.observe(document.documentElement, {
+						childList: true,
+						subtree: true,
+						attributes: true,
+						attributeFilter: ['onclick']
+					});
+
+					// 4. 初始化执行一次
+					Z_removeInlineOnclick();
+
+					const Z_rawCreateElement = document.createElement;
+
+					document.createElement = function (tagName, ...args) {
+						const el = Z_rawCreateElement.call(this, tagName, ...args);
+
+						if (tagName.toLowerCase() === 'script') {
+							const rawSetAttribute = el.setAttribute;
+							const rawGetAttribute = el.getAttribute;
+							let srcValue = '';
+							
+							el.setAttribute = function (name, value) {
+								if (name === 'src' && typeof value === 'string') {
+									value = z_proxyCdnUrl(value);
+									srcValue = value;
+								}
+								return rawSetAttribute.call(this, name, value);
+							};
+
+							Object.defineProperty(el, 'src', {
+								get: function() {
+									return srcValue || rawGetAttribute.call(this, 'src') || '';
+								},
+								set: function(value) {
+									if (typeof value === 'string') {
+										srcValue = z_proxyCdnUrl(value);
+										rawSetAttribute.call(this, 'src', srcValue);
+									} else {
+										srcValue = value;
+									}
+								},
+								configurable: true,
+								enumerable: true
+							});
+						}
+
+						if (tagName.toLowerCase() === 'link') {
+							const rawSetAttribute = el.setAttribute;
+							const rawGetAttribute = el.getAttribute;
+							let hrefValue = '';
+							
+							el.setAttribute = function (name, value) {
+								if (name === 'href' && typeof value === 'string') {
+									value = z_proxyCdnUrl(value);
+									hrefValue = value;
+								}
+								return rawSetAttribute.call(this, name, value);
+							};
+
+							Object.defineProperty(el, 'href', {
+								get: function() {
+									return hrefValue || rawGetAttribute.call(this, 'href') || '';
+								},
+								set: function(value) {
+									if (typeof value === 'string') {
+										hrefValue = z_proxyCdnUrl(value);
+										rawSetAttribute.call(this, 'href', hrefValue);
+									} else {
+										hrefValue = value;
+									}
+								},
+								configurable: true,
+								enumerable: true
+							});
+						}
+
+						return el;
+					};
+
+					const Z_OriginalXMLHttpRequest = window.XMLHttpRequest;
+					window.XMLHttpRequest = function (...args) {
+						const xhr = new Z_OriginalXMLHttpRequest(...args);
+						const rawOpen = xhr.open;
+
+						xhr.open = function (method, url, ...rest) {
+							if (typeof url === 'string') {
+								const methodUpper = (method || '').toUpperCase();
+								if (methodUpper === 'GET' && z_isUrlInWhitelist(url)) {
+									url = z_proxyCdnUrl(url);
+								}
+							}
+							return rawOpen.call(this, method, url, ...rest);
+						};
+
+						return xhr;
+					};
+
+					window.XMLHttpRequest.prototype = Z_OriginalXMLHttpRequest.prototype;
+					Object.setPrototypeOf(window.XMLHttpRequest, Z_OriginalXMLHttpRequest);
+
+					const z_originalFetch = window.fetch;
+					window.fetch = async function (...args) {
+						if (args.length > 0) {
+							let url = '';
+							let method = 'GET';
+							
+							if (typeof args[0] === 'string') {
+								url = args[0];
+								if (args[1] && args[1].method) {
+									method = args[1].method.toUpperCase();
+								}
+								if (method === 'GET' && z_isUrlInWhitelist(url)) {
+									args[0] = z_proxyCdnUrl(url);
+								}
+							} else if (args[0] instanceof Request) {
+								const originalUrl = args[0].url;
+								method = (args[0].method || 'GET').toUpperCase();
+								if (method === 'GET' && z_isUrlInWhitelist(originalUrl)) {
+									const proxiedUrl = z_proxyCdnUrl(originalUrl);
+									if (proxiedUrl !== originalUrl) {
+										args[0] = new Request(proxiedUrl, args[0]);
+									}
+								}
+							}
+						}
+						return z_originalFetch.apply(this, args);
+					};
+				</script>
+			</head>
+			<body>
+				
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>山水有法 · 班级写景方法清单 | 八上第三单元 任务七</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=&#39;http://www.w3.org/2000/svg&#39; viewBox=&#39;0 0 64 64&#39;%3E%3Crect width=&#39;64&#39; height=&#39;64&#39; rx=&#39;8&#39; fill=&#39;%23a83a2a&#39;/%3E%3Ctext x=&#39;32&#39; y=&#39;46&#39; font-size=&#39;40&#39; text-anchor=&#39;middle&#39; fill=&#39;%23f8f2e4&#39; font-family=&#39;serif&#39;%3E%E6%82%9F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://artifacts-cdn.chatglm.site/https://fonts.googleapis.com">
+<link href="https://artifacts-cdn.chatglm.site/https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&amp;family=Noto+Serif+SC:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet">
+<link href="https://artifacts-cdn.chatglm.site/https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.1.0/style.css" rel="stylesheet">
+<script src="https://artifacts-cdn.chatglm.site/https://cdn.jsdelivr.net/npm/mqtt@4.3.7/dist/mqtt.min.js"></script>
+<script src="https://artifacts-cdn.chatglm.site/https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer=""></script>
+<style>
+:root{
+  --paper:#f5f0e4; --paper2:#eee6d2; --paper3:#fbf7ec;
+  --ink:#27231c; --ink2:#5c5344; --line:#d9cdb2; --line2:#c6b795;
+  --qing:#2e5e57; --qing2:#3d5a73; --zhu:#a83a2a; --gold:#8a6d3b;
+  --f-brush:'Ma Shan Zheng','Noto Serif SC',serif;
+  --f-kai:'LXGW WenKai','Kaiti SC','KaiTi','STKaiti',serif;
+  --f-serif:'Noto Serif SC','Songti SC','SimSun',serif;
+  --shadow:0 12px 34px -12px rgba(39,35,28,.22);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{font-family:var(--f-serif);background:var(--paper);color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.55;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>")}
+::selection{background:var(--qing);color:var(--paper3)}
+:focus-visible{outline:2px dashed var(--qing);outline-offset:2px}
+[hidden]{display:none!important}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.kai{font-family:var(--f-kai)}
+section{padding:64px clamp(16px,4vw,40px);position:relative;z-index:2}
+.wrap{max-width:1150px;margin:0 auto}
+
+/* ===== 顶栏 ===== */
+.topbar{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:10px clamp(16px,4vw,40px);background:rgba(245,240,228,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{font-weight:700;letter-spacing:2px;font-size:17px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand em{font-style:normal;font-size:12px;color:#8a8172;letter-spacing:1px;font-weight:400}
+.mini-seal{width:27px;height:27px;background:var(--zhu);color:#f8f2e4;font-family:var(--f-brush);display:grid;place-items:center;font-size:16px;border-radius:3px;transform:rotate(-5deg);flex:none}
+.nav-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.store-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:#6b6252;cursor:pointer;border:1px solid var(--line);padding:5px 12px;border-radius:999px;background:var(--paper3);font-family:inherit;letter-spacing:1px}
+.store-chip i{width:8px;height:8px;border-radius:50%;background:#b3a98f;flex:none}
+.store-chip.on{border-color:rgba(46,94,87,.5);color:var(--qing)}
+.store-chip.on i{background:#2e9e5b;animation:blink 1.2s infinite alternate}
+.store-chip.warn i{background:#c98a2a;animation:blink .7s infinite alternate}
+.store-chip.bad{border-color:rgba(168,58,42,.45);color:var(--zhu)}
+.store-chip.bad i{background:var(--zhu)}
+@keyframes blink{to{opacity:.25}}
+#storeWarn{background:rgba(168,58,42,.08);border-bottom:1px solid rgba(168,58,42,.3);color:#7c2f22;padding:9px clamp(16px,4vw,40px);font-size:13px;line-height:1.9;text-align:center;position:relative;z-index:40}
+#storeWarn b{color:var(--zhu)}
+.tbtn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);cursor:pointer;font-size:13.5px;letter-spacing:1px;font-family:inherit;transition:.15s}
+.tbtn:hover{background:var(--ink);color:var(--paper)}
+.tbtn.primary{background:var(--ink);color:var(--paper)}
+.tbtn.primary:hover{transform:translateY(-1px);box-shadow:0 8px 18px -8px rgba(39,35,28,.6)}
+.tbtn.danger{border-color:var(--zhu);color:var(--zhu)}
+.tbtn.danger:hover,.tbtn.danger.arm{background:var(--zhu);color:var(--paper)}
+
+/* ===== 卷首 ===== */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line);padding:clamp(56px,9vh,104px) clamp(16px,4vw,40px) 170px}
+.hero-inner{max-width:1080px;margin:0 auto;position:relative;z-index:3}
+.hero-kicker{display:inline-block;font-size:12.5px;letter-spacing:3px;color:var(--qing);border:1px solid rgba(46,94,87,.35);padding:4px 14px;border-radius:999px;background:rgba(46,94,87,.05)}
+.hero-t{font-family:var(--f-brush);font-weight:400;font-size:clamp(68px,13vw,148px);line-height:1.04;letter-spacing:6px;margin:20px 0 6px}
+.hero-t .hl{color:var(--qing)}
+.hero-sub{font-family:var(--f-kai);font-size:clamp(15px,2vw,18px);color:var(--ink2);line-height:2;max-width:680px}
+.hero-actions{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 24px;border-radius:4px;font-size:15px;letter-spacing:2px;border:1px solid var(--ink);cursor:pointer;text-decoration:none;transition:.18s;font-family:inherit}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 26px -10px rgba(39,35,28,.55)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--paper)}
+.stats{margin-top:36px;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.stat{display:flex;align-items:baseline;gap:9px}
+.stat b{font-family:var(--f-brush);font-weight:400;font-size:42px;color:var(--zhu);line-height:1}
+.stat i{font-style:normal;font-size:13px;color:#8a8172;letter-spacing:2px}
+.stat-sep{width:1px;height:32px;background:var(--line2)}
+.hero-seal{position:absolute;right:2%;top:-8px;width:94px;height:94px;background:var(--zhu);color:#f8f2e4;font-family:var(--f-brush);display:grid;place-items:center;font-size:46px;border-radius:6px;transform:rotate(7deg);box-shadow:0 12px 28px -8px rgba(168,58,42,.55);z-index:4}
+.hero-seal::after{content:'';position:absolute;inset:5px;border:2px solid rgba(248,242,228,.6);border-radius:3px}
+.mts{position:absolute;bottom:-2px;left:0;width:100%;height:clamp(150px,23vw,320px);z-index:1}
+.mist{position:absolute;left:0;right:0;bottom:70px;height:130px;pointer-events:none;z-index:2}
+.mist i{position:absolute;top:0;width:46%;height:100%;background:radial-gradient(60% 100% at 50% 100%,rgba(250,247,238,.95),rgba(250,247,238,0) 72%);filter:blur(5px)}
+.mist i:first-child{left:-8%;animation:drift 44s linear infinite alternate}
+.mist i:last-child{right:-10%;animation:drift 58s linear infinite alternate-reverse}
+@keyframes drift{to{transform:translateX(72px)}}
+
+/* ===== 章节头 ===== */
+.sec-head{display:flex;gap:16px;align-items:flex-end;margin-bottom:24px}
+.sec-no{font-family:var(--f-brush);font-size:52px;line-height:.9;color:var(--zhu)}
+.sec-head h2{font-size:24px;letter-spacing:3px;line-height:1.2}
+.sec-head p{font-size:13px;color:#8a8172;margin-top:4px;letter-spacing:1px}
+
+/* ===== 壹 · 归纳 ===== */
+.mini-steps{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;color:#8a8172;letter-spacing:1px}
+.mini-steps b{font-family:var(--f-brush);font-weight:400;color:var(--qing);font-size:19px;margin-right:6px}
+.contrib-grid{display:grid;grid-template-columns:minmax(300px,370px) 1fr;gap:36px;align-items:start}
+.spines{display:flex;flex-wrap:wrap;gap:10px}
+.spine{writing-mode:vertical-rl;width:56px;height:196px;padding:16px 7px;border:1px solid var(--line);background:var(--paper3);cursor:pointer;position:relative;transition:.18s;font-family:inherit;display:flex;align-items:center;gap:8px;border-radius:2px;box-shadow:0 2px 6px rgba(39,35,28,.06)}
+.spine .t{font-size:15.5px;font-weight:600;letter-spacing:3px;color:var(--ink)}
+.spine .a{font-size:10.5px;color:#8a8172;letter-spacing:2px}
+.spine:hover{transform:translateY(-4px);border-color:var(--qing);box-shadow:var(--shadow)}
+.spine.on{background:var(--ink);border-color:var(--ink)}
+.spine.on .t{color:var(--paper)} .spine.on .a{color:#c9bfa8}
+.spine.on::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:var(--zhu)}
+.panel{background:var(--paper3);border:1px solid var(--line);border-radius:6px;padding:18px;box-shadow:var(--shadow)}
+.sel-panel{margin-top:16px}
+.sel-panel .st{font-size:20px;font-weight:700;letter-spacing:1px}
+.sel-panel .sm{font-size:12.5px;color:#8a8172;margin-top:2px}
+.sel-panel .sh{font-family:var(--f-kai);margin-top:12px;padding:9px 13px;border-left:3px solid rgba(168,58,42,.5);background:rgba(168,58,42,.05);font-size:15px}
+.sel-panel .sh small{display:block;font-family:var(--f-serif);font-size:11px;color:#a39a86;letter-spacing:2px;margin-bottom:2px}
+.f-label{display:block;font-size:13px;letter-spacing:2px;color:var(--ink2);margin:0 0 6px}
+.f-label b{color:var(--zhu);margin-left:2px}
+.f-label .soft{color:#a39a86;letter-spacing:0;margin-left:8px;font-size:12px}
+input[type=text],textarea{width:100%;background:#fffdf6;border:1px solid var(--line2);border-radius:4px;padding:10px 12px;font-family:inherit;font-size:16px;color:var(--ink);transition:.15s}
+input[type=text]:focus,textarea:focus{outline:none;border-color:var(--qing);box-shadow:0 0 0 3px rgba(46,94,87,.13)}
+textarea{resize:vertical;min-height:78px;line-height:1.8}
+.ferr{border-color:var(--zhu)!important;box-shadow:0 0 0 3px rgba(168,58,42,.13)!important}
+.field{margin-bottom:16px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cat-box{display:flex;flex-wrap:wrap;gap:8px}
+.cchip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--line2);background:var(--paper3);border-radius:4px;font-size:13.5px;cursor:pointer;transition:.15s;color:var(--ink2);font-family:inherit}
+.cchip .ic{width:15px;height:15px}
+.cchip:hover{border-color:var(--c);color:var(--c)}
+.cchip.on{background:var(--c);border-color:var(--c);color:#fbf7ec}
+.cat-hint{font-size:12.5px;color:#8a8172;margin-top:8px}
+.sug-box{margin-top:8px}
+.sug{display:inline-block;border:1px dashed var(--line2);border-radius:999px;padding:3px 11px;font-size:12.5px;color:var(--ink2);cursor:pointer;background:transparent;margin:4px 6px 0 0;transition:.15s;font-family:inherit}
+.sug:hover{border-style:solid;border-color:var(--qing);color:var(--qing)}
+.last-ask{background:rgba(46,94,87,.055);border-left:3px solid var(--qing);border-radius:0 6px 6px 0;padding:13px 14px 9px;margin-top:20px}
+.last-ask .f-label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ask-seal{width:24px;height:24px;background:var(--qing);color:#f8f2e4;font-family:var(--f-kai);font-style:normal;font-size:14px;display:grid;place-items:center;border-radius:3px;transform:rotate(-5deg);flex:none}
+.last-ask .soft{margin-left:0}
+.sub-row{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap}
+.tip{font-size:12.5px;color:#8a8172;display:inline-flex;align-items:center;gap:6px}
+.tip .ic{color:var(--qing)}
+
+/* 我的归纳 */
+.mine{margin-top:48px}
+.mine-h{display:flex;align-items:baseline;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:10px;flex-wrap:wrap}
+.mine-h h3{font-size:18px;letter-spacing:2px}
+.mine-h b{color:var(--zhu);font-family:var(--f-brush);font-weight:400;font-size:26px;line-height:1}
+.mine-h small{font-size:12.5px;color:#8a8172}
+.mine-h .go{margin-left:auto;font-size:13px;color:var(--qing);text-decoration:none;border-bottom:1px dashed var(--qing);letter-spacing:1px}
+.lrow{display:grid;grid-template-columns:158px 1fr auto;gap:16px;padding:15px 6px;border-top:1px solid var(--line);align-items:start}
+.lrow:first-child{border-top:none}
+@keyframes rowFlash{0%,30%{background:rgba(46,94,87,.12)}100%{background:transparent}}
+.lrow.flash{animation:rowFlash 1.8s ease}
+.ltag b{display:block;font-size:14.5px}
+.ltag span{display:flex;align-items:center;gap:6px;font-size:12px;color:#8a8172;margin-top:3px}
+.ltag i{width:8px;height:8px;border-radius:2px;flex:none}
+.ltag em{display:block;font-style:normal;font-size:11.5px;color:#a39a86;margin-top:3px;letter-spacing:1px}
+.lmain .mth{font-size:16.5px;letter-spacing:1px}
+.lmain .q{display:block;font-size:14.5px;color:var(--ink);margin:4px 0 2px}
+.lmain p{font-size:13px;color:#8a8172;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lmain .tra{font-size:12.5px;color:var(--qing);margin-top:2px}
+.lmain .tra::before{content:'↳ 想写家乡的：';color:#8a8172}
+.del{border:1px solid var(--line2);background:transparent;border-radius:4px;padding:5px 10px;font-size:12px;color:#8a8172;cursor:pointer;display:inline-flex;gap:5px;align-items:center;opacity:0;transition:.15s;font-family:inherit}
+.lrow:hover .del{opacity:1}
+.del:hover,.del.arm{opacity:1;color:var(--zhu);border-color:var(--zhu)}
+.mempty{padding:26px 6px;font-size:14px;color:#a39a86}
+
+/* ===== 贰 · 班级清单 ===== */
+.board-sec{background:var(--paper2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.live-panel{background:var(--paper3);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:20px;box-shadow:var(--shadow)}
+.live-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.live-head b{letter-spacing:2px;font-size:15px}
+.live-dot{width:9px;height:9px;border-radius:50%;background:#2e9e5b;animation:blink 1.2s infinite alternate;flex:none}
+.live-meta{font-size:12.5px;color:#8a8172}
+.live-stream{margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:330px;overflow:auto}
+.live-card{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;background:rgba(255,255,255,.55);border:1px solid var(--line);border-radius:4px;padding:7px 12px;font-size:13.5px;animation:cardIn .45s ease}
+@keyframes cardIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1}}
+.live-card .ln{font-weight:700;color:var(--qing)}
+.live-card .lt{color:var(--ink2)}
+.live-card .lq{color:var(--ink)}
+.live-card .lto{color:var(--qing);border:1px dashed rgba(46,94,87,.4);border-radius:999px;padding:0 9px;font-size:12px;background:rgba(46,94,87,.05)}
+.live-card .ltm{margin-left:auto;font-size:11.5px;color:#a39a86}
+.live-card.sys{color:#8a8172;font-size:12.5px;background:transparent;border-style:dashed}
+
+.board-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px}
+.tchip{border:1px solid var(--line2);background:var(--paper3);padding:4px 13px;font-size:13px;border-radius:999px;cursor:pointer;transition:.15s;font-family:inherit;color:var(--ink2)}
+.tchip:hover{border-color:var(--ink)}
+.tchip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.sw{position:relative;margin-left:auto}
+.sw .ic{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#a39a86}
+.sw input{padding:7px 10px 7px 30px;width:190px;font-size:16px;background:transparent;border:none;border-bottom:1px solid var(--line2);border-radius:0}
+.sw input:focus{box-shadow:none;border-bottom-color:var(--qing)}
+.legend{font-size:12px;color:#a39a86;margin-bottom:14px;letter-spacing:1px}
+.legend i{font-style:normal;font-size:11px;padding:1px 7px;border-radius:3px;margin:0 3px}
+.legend .l1{background:#e7dfcc;color:#6b6252}.legend .l2{background:rgba(46,94,87,.12);color:var(--qing)}.legend .l3{background:rgba(168,58,42,.12);color:var(--zhu)}
+
+.scrollwrap{margin-top:26px}
+.rod{height:16px;background:linear-gradient(#7a5a3a,#4a3624 55%,#5d452c);border-radius:8px;position:relative;z-index:2;box-shadow:0 3px 9px rgba(0,0,0,.28)}
+.rod::before,.rod::after{content:'';position:absolute;top:-3px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8a6a44,#3b2b1a);box-shadow:0 2px 5px rgba(0,0,0,.35)}
+.rod::before{left:-10px}.rod::after{right:-10px}
+.rod-top{margin-bottom:-2px}.rod-btm{margin-top:-2px}
+.scrollpaper{background:var(--paper3);margin:0 16px;padding:36px clamp(20px,5vw,56px) 42px;border-left:1px solid var(--line2);border-right:1px solid var(--line2);box-shadow:0 30px 70px -24px rgba(39,35,28,.4);overflow:hidden;position:relative}
+.bp-head{padding-bottom:20px;border-bottom:1px solid var(--line2);position:relative}
+.bp-head .bk{font-size:13px;color:#8a8172;letter-spacing:5px}
+.bp-head h3{font-family:var(--f-brush);font-weight:400;font-size:clamp(34px,5vw,46px);letter-spacing:8px;line-height:1.2;margin-top:4px}
+.bp-meta{margin-top:12px;font-size:13px;color:var(--ink2)}
+.bp-meta .dsep{color:var(--zhu);font-size:9px;margin:0 9px;vertical-align:2px}
+.stamp{position:absolute;right:0;top:4px;width:92px;height:92px;background:var(--zhu);color:#f8f2e4;font-family:var(--f-brush);font-size:27px;line-height:1.2;display:grid;place-items:center;text-align:center;border-radius:5px;transform:rotate(-8deg);box-shadow:0 10px 26px -8px rgba(168,58,42,.55);opacity:0;pointer-events:none}
+.stamp::after{content:'';position:absolute;inset:5px;border:2px solid rgba(248,242,228,.55);border-radius:3px}
+.stamp.stamped{opacity:1;animation:stampIn .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes stampIn{0%{transform:scale(2.4) rotate(-28deg);opacity:0}60%{transform:scale(.94) rotate(-6deg);opacity:1}100%{transform:scale(1) rotate(-8deg);opacity:1}}
+
+.csec{margin-top:10px}
+.chead{display:flex;align-items:baseline;gap:14px;padding:26px 0 10px;border-bottom:4px double var(--ink);flex-wrap:wrap}
+.cnum{font-family:var(--f-brush);font-size:34px;color:var(--c);line-height:1}
+.ct h3{font-size:20px;letter-spacing:2px}
+.ct p{font-size:12.5px;color:#8a8172;margin-top:1px}
+.ccount{margin-left:auto;font-size:13px;color:#8a8172;font-family:var(--f-kai)}
+.lexrow{display:grid;grid-template-columns:236px 1fr;gap:22px;padding:19px 4px;border-top:1px dashed var(--line)}
+.csec .lexrow:first-of-type{border-top:none}
+.mname h4{font-size:19px;letter-spacing:1px;display:flex;align-items:center;gap:9px;line-height:1.4}
+.mname h4::before{content:'';width:9px;height:9px;background:var(--c);border-radius:2px;flex:none}
+.badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:3px;letter-spacing:1px;margin-top:7px}
+.b1{background:#e7dfcc;color:#6b6252}.b2{background:rgba(46,94,87,.13);color:var(--qing)}.b3{background:rgba(168,58,42,.13);color:var(--zhu)}
+.mtags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.mtags span{font-size:11.5px;color:var(--ink2);border:1px solid var(--line);padding:1px 8px;border-radius:3px;background:rgba(255,255,255,.5)}
+.mby{font-size:12px;color:#a39a86;margin-top:9px;line-height:1.8}
+.mdetail blockquote{font-family:var(--f-kai);font-size:16.5px;border-left:3px solid rgba(168,58,42,.5);background:linear-gradient(90deg,rgba(168,58,42,.06),transparent);padding:8px 14px;margin-bottom:10px}
+.mdetail cite{display:block;font-style:normal;font-family:var(--f-serif);font-size:12px;color:#a39a86;margin-top:3px}
+.mana{font-size:14px;color:var(--ink2);line-height:1.9}
+.mana i{font-style:normal;color:#f8f2e4;background:var(--zhu);font-family:var(--f-kai);font-size:11.5px;padding:1px 6px;margin-right:9px;border-radius:2px}
+.mtra{font-size:12.5px;color:var(--ink2);margin-top:8px;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.mtra>i{font-style:normal;color:#f8f2e4;background:var(--qing);font-family:var(--f-kai);font-size:11.5px;padding:1px 6px;border-radius:2px}
+.mtra span{border:1px dashed rgba(46,94,87,.4);color:var(--qing);border-radius:999px;padding:1px 9px;font-size:12px;background:rgba(46,94,87,.05)}
+.mrest{font-size:12px;color:#b3a98f;margin-top:6px;letter-spacing:1px}
+.nomatch{padding:40px 0;text-align:center;color:#a39a86}
+.bp-foot{margin-top:30px;padding-top:20px;border-top:1px solid var(--line2);text-align:center}
+.bp-foot .q{font-family:var(--f-kai);font-size:clamp(15px,2.2vw,17.5px);color:var(--qing);letter-spacing:1px}
+.bp-foot .s{font-size:12px;color:#8a8172;margin-top:8px;letter-spacing:3px}
+
+.empty{border:1px dashed var(--line2);background:rgba(255,255,255,.4);padding:64px 24px;text-align:center;border-radius:6px}
+.empty .big{font-family:var(--f-brush);font-size:32px;color:var(--ink2);letter-spacing:6px;margin-bottom:10px}
+.empty p{color:#8a8172;font-size:14px;margin-bottom:20px}
+
+/* ===== 页脚 ===== */
+footer{background:var(--ink);color:#cfc4ab;text-align:center;padding:56px 20px 42px;position:relative;z-index:2}
+.fq{font-family:var(--f-kai);font-size:clamp(16px,2.4vw,20px);color:#efe7d3;letter-spacing:2px}
+.fs{font-size:12px;color:#8f8570;margin-top:16px;letter-spacing:2px;line-height:2}
+
+/* ===== 弹窗 / 提示 ===== */
+.modal-back{position:fixed;inset:0;background:rgba(30,26,20,.5);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:80;opacity:0;pointer-events:none;transition:.2s;padding:16px}
+.modal-back.open{opacity:1;pointer-events:auto}
+.modal{width:min(560px,94vw);background:var(--paper);border:1px solid var(--line2);border-radius:8px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.4);transform:translateY(14px) scale(.98);transition:.25s;max-height:86vh;overflow:auto}
+.modal-back.open .modal{transform:none}
+.modal h3{font-size:19px;letter-spacing:3px;display:flex;align-items:center;gap:10px}
+.modal ol{padding-left:20px;font-size:13.5px;color:var(--ink2);line-height:2.1}
+.mclose{margin-left:auto;border:1px solid var(--line2);background:transparent;border-radius:4px;width:32px;height:32px;display:grid;place-items:center;cursor:pointer;color:var(--ink2)}
+.mclose:hover{color:var(--zhu);border-color:var(--zhu)}
+.msec{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.msec h4{font-size:13px;color:var(--qing);letter-spacing:2px;margin-bottom:10px}
+.mrow-btns{display:flex;flex-wrap:wrap;gap:10px}
+.mnote{font-size:12.5px;color:#8a8172;line-height:1.9;margin-top:10px}
+#joinCode{letter-spacing:6px;text-transform:uppercase;font-size:20px;text-align:center;max-width:200px}
+#toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,16px);background:var(--ink);color:var(--paper);padding:11px 22px;border-radius:4px;font-size:14px;letter-spacing:1px;opacity:0;pointer-events:none;transition:.25s;z-index:99;box-shadow:0 12px 30px rgba(0,0,0,.32);max-width:86vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.err{background:var(--zhu)}
+
+/* ===== 投影模式 ===== */
+.exit-present{position:fixed;right:18px;bottom:18px;z-index:90;display:none;align-items:center;gap:7px;padding:9px 16px;border:1px solid var(--ink);border-radius:4px;background:var(--paper);color:var(--ink);cursor:pointer;font-family:inherit;font-size:13.5px;letter-spacing:1px;box-shadow:0 10px 26px rgba(0,0,0,.25)}
+body.present .exit-present{display:inline-flex}
+body.present .topbar,body.present .hero,body.present #contribute,body.present footer,body.present #storeWarn{display:none}
+body.present .live-stream{max-height:44vh}
+
+/* ===== 卷轴生成舞台 ===== */
+#scrollStage{position:fixed;inset:0;background:rgba(20,17,12,.96);z-index:96;display:none;padding:30px 14px 90px;overflow:auto}
+#scrollStage.open{display:block}
+.theater{max-width:880px;margin:26px auto 0;position:relative}
+.st-rod{position:absolute;top:-6px;bottom:-6px;width:30px;border-radius:15px;background:linear-gradient(#8a6a44,#3b2b1a 55%,#5d452c);z-index:3;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.st-rod::before,.st-rod::after{content:'';position:absolute;left:50%;transform:translateX(-50%);width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8a6a44,#2e2213);box-shadow:0 4px 10px rgba(0,0,0,.5)}
+.st-rod::before{top:-22px}.st-rod::after{bottom:-22px}
+.st-rod.l{left:-14px}.st-rod.r{right:-14px}
+.st-paper{background:var(--paper3);margin:0 8px;padding:44px clamp(22px,4.5vw,52px) 46px;box-shadow:0 34px 90px rgba(0,0,0,.55);clip-path:inset(0 50% 0 50%);transition:clip-path 2s cubic-bezier(.65,0,.25,1);position:relative}
+.theater.unrolled .st-paper{clip-path:inset(0 0 0 0)}
+#scrollStage .stamp{opacity:0}
+#scrollStage.reveal .stamp{opacity:1;animation:stampIn .5s cubic-bezier(.2,1.4,.4,1) both}
+.stage-bar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;gap:10px;z-index:5;background:rgba(30,26,20,.75);border:1px solid rgba(245,240,228,.25);border-radius:8px;padding:9px 12px;backdrop-filter:blur(6px)}
+.stage-bar .tbtn{border-color:rgba(245,240,228,.5);color:#f5f0e4}
+.stage-bar .tbtn:hover{background:#f5f0e4;color:var(--ink)}
+.stage-title{text-align:center;color:#efe7d3;font-family:var(--f-kai);letter-spacing:3px;font-size:15px;opacity:.85}
+#scrollStage .nomatch{color:#a39a86}
+
+/* ===== 响应式 ===== */
+@media (max-width:980px){
+  .contrib-grid{grid-template-columns:1fr}
+  .spines{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}
+  .spine{flex:none}
+  .hero-seal{display:none}
+  .duo{grid-template-columns:1fr}
+  .lexrow{grid-template-columns:1fr;gap:10px}
+  .lrow{grid-template-columns:1fr;gap:8px}
+  .lrow .del{opacity:1}
+  .sw{margin-left:0;width:100%}
+  .sw input{width:100%}
+  .brand em{display:none}
+  .store-chip span{display:none}
+}
+/* ===== 打印 ===== */
+@media print{
+  body::before,.topbar,.hero,.mist,#contribute,footer,.board-tools,.legend,.modal-back,#toast,.rod,#storeWarn,.live-panel,.exit-present,#scrollStage .st-rod,.stage-bar{display:none!important}
+  body,section{background:#fff;padding:0}
+  .board-sec{border:none}
+  .scrollpaper{margin:0;border:none;box-shadow:none;padding:10mm 6mm;height:auto!important}
+  .lexrow,.csec,.bp-foot{break-inside:avoid}
+  .chead{break-after:avoid}
+  .stamp{opacity:1;animation:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.printing-stage *{visibility:hidden}
+  body.printing-stage #scrollStage,body.printing-stage #scrollStage .st-paper,body.printing-stage #scrollStage .st-paper *{visibility:visible}
+  body.printing-stage #scrollStage{position:absolute;left:0;top:0;background:#fff;padding:0;overflow:visible}
+  body.printing-stage .st-paper{clip-path:none!important;margin:0;box-shadow:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"></path><circle cx="12" cy="12" r="2.7"></circle></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><circle cx="7.5" cy="12" r="1.8"></circle><path d="M11.5 8.2a5.4 5.4 0 0 1 0 7.6"></path><path d="M15 5.6a9.3 9.3 0 0 1 0 12.8"></path></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 9c1.8 0 1.8 1.8 3.6 1.8S8.4 9 10.2 9s1.8 1.8 3.6 1.8S15.6 9 17.4 9s1.8 1.8 3.6 1.8"></path><path d="M3 15c1.8 0 1.8 1.8 3.6 1.8S8.4 15 10.2 15s1.8 1.8 3.6 1.8 1.8-1.8 3.6-1.8 1.8 1.8 3.6 1.8"></path></symbol>
+  <symbol id="i-void" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"></path></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4.2 6 7.7 6 11a6 6 0 0 1-12 0c0-3.3 2.8-6.8 6-11Z"></path></symbol>
+  <symbol id="i-brush" viewBox="0 0 24 24"><path d="M20.5 3.5c-4.2 1-9.2 5.4-11.2 9.4l1.8 1.8c4-2 8.4-7 9.4-11.2Z"></path><path d="M8.6 13.6c-2.3.6-3.8 2.5-4.1 6 3.5-.3 5.4-1.8 6-4.1"></path></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4.5" width="16" height="15" rx="1"></rect><path d="M4 9.5h16M10 9.5v10"></path></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.3C7.8 17.4 4.4 14.3 3.6 11 3 8.4 4.8 6 7.3 6c1.7 0 3.2 1 4.7 3 1.5-2 3-3 4.7-3 2.5 0 4.3 2.4 3.7 5-.8 3.3-4.2 6.4-8.4 9.3Z"></path></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.8h5V7M7 7l.8 13h8.4L17 7M10.2 10.5v6M13.8 10.5v6"></path></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"></rect><path d="M15 5H6a1 1 0 0 0-1 1v10"></path></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V4h10v4"></path><rect x="4" y="8" width="16" height="7" rx="1.5"></rect><path d="M7 13h10v7H7z"></path></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v10.5M8 10.5l4 4 4-4M5 19.5h14"></path></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15V4.5M8 8.5l4-4 4 4M5 19.5h14"></path></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path><path d="M20 4v4.5h-4.5"></path></symbol>
+  <symbol id="i-tools" viewBox="0 0 24 24"><path d="M4 7h8M18.5 7H20M4 17h3M13 17h7"></path><circle cx="15.5" cy="7" r="2.2"></circle><circle cx="9.5" cy="17" r="2.2"></circle></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"></circle><path d="M15.8 15.8 20.5 20.5"></path></symbol>
+  <symbol id="i-live" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"></circle><path d="M7.7 7.7a6 6 0 0 0 0 8.6M16.3 7.7a6 6 0 0 1 0 8.6"></path><path d="M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2"></path></symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M7 4h12a2 2 0 0 1 0 4h-1"></path><path d="M17 20H5a2 2 0 0 1 0-4h1"></path><path d="M8 4a2 2 0 0 0 0 4v12M16 20a2 2 0 0 0 0-4V4"></path></symbol>
+</svg>
+
+<nav class="topbar">
+  <div class="brand"><span class="mini-seal">悟</span>山水有法 <em>· 任务七 提炼写景方法</em></div>
+  <div class="nav-links">
+    <button type="button" class="store-chip" id="syncChip" title="点击加入 / 查看实时课堂"><i></i><span id="syncTxt">本机模式 · 点击同步</span></button>
+    <button type="button" class="tbtn" id="toolsBtn"><svg class="ic"><use href="#i-tools"></use></svg>教师工具</button>
+  </div>
+</nav>
+
+<div id="storeWarn">
+  ⚠ 当前环境<b>无法持久保存</b>（多为无痕/隐私窗口或内置预览）。请用普通浏览器窗口打开本页；已录内容请到「教师工具 → 导出数据」备份。
+</div>
+
+<header class="hero">
+  <div class="hero-seal">悟</div>
+  <div class="hero-inner">
+    <span class="hero-kicker">部编版语文 · 八年级上册 · 第三单元「山川之美」 · 大情境任务七</span>
+    <h1 class="hero-t">山水<span class="hl">有法</span></h1>
+    <p class="hero-sub">从《三峡》到《钱塘湖春行》，九篇山水诗文各藏妙法。<br>人人提炼几条、想想它能写家乡的哪处景，全班凝成一份带得走的——《写景方法清单》。</p>
+    <div class="hero-actions">
+      <a class="btn primary" href="https://chat.z.ai/space/q1gw37nz0ex1-art#contribute"><svg class="ic"><use href="#i-brush"></use></svg>我来归纳</a>
+      <a class="btn ghost" href="https://chat.z.ai/space/q1gw37nz0ex1-art#board"><svg class="ic"><use href="#i-grid"></use></svg>看班级清单</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="stStu">0</b><i>位同学参与</i></div><span class="stat-sep"></span>
+      <div class="stat"><b id="stCnt">0</b><i>条方法归纳</i></div><span class="stat-sep"></span>
+      <div class="stat"><b id="stTxt">0</b><i>篇课文覆盖</i></div><span class="stat-sep"></span>
+      <div class="stat"><b id="stScene">0</b><i>处家乡景可写</i></div>
+    </div>
+  </div>
+  <div class="mist"><i></i><i></i></div>
+  <svg class="mts" viewBox="0 0 1440 330" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <path d="M0 232 C90 196 150 176 236 196 C300 210 330 224 396 214 C470 202 520 168 600 182 C676 195 706 226 780 220 C860 214 900 172 980 178 C1056 184 1090 220 1170 214 C1246 208 1300 186 1370 196 C1400 200 1424 208 1440 214 L1440 330 L0 330 Z" fill="#3d5a73" opacity=".16"></path>
+    <path d="M0 268 C120 236 190 220 288 240 C368 256 420 272 508 262 C600 252 660 214 756 228 C844 240 872 268 964 264 C1064 259 1116 226 1210 238 C1290 248 1360 268 1440 258 L1440 330 L0 330 Z" fill="#2e5e57" opacity=".24"></path>
+    <g stroke="#27231c" stroke-width="2" fill="none" opacity=".5"><path d="M1174 240 h22 M1178 240 v-11 h14 v11 M1181 229 v-8 h8 v8 M1185 221 l4-10 4 10"></path></g>
+    <path d="M842 96 q7-9 14 0 m7-11 q7-9 14 0" stroke="#27231c" stroke-width="2" fill="none" opacity=".45" stroke-linecap="round"></path>
+    <path d="M0 298 C160 272 240 262 360 278 C470 292 560 304 680 296 C820 287 900 268 1020 278 C1140 288 1300 302 1440 292 L1440 330 L0 330 Z" fill="#27231c" opacity=".3"></path>
+  </svg>
+</header>
+
+<main>
+  <!-- 壹 · 归纳提炼 -->
+  <section id="contribute">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-no">壹</span><div><h2>我的归纳</h2><p>对照量规找差距之后，把课文里最值得带走的方法写下来，最后迁移到家乡的景</p></div></div>
+      <div class="mini-steps"><span><b>壹</b>署名</span><span><b>贰</b>选课文</span><span><b>叁</b>提炼方法卡</span><span><b>肆</b>迁移家乡景</span></div>
+
+      <div class="contrib-grid">
+        <div>
+          <div class="spines" id="spineBox"><button type="button" class="spine on" data-id="sanxia"><span class="t">《三峡》</span><span class="a">郦道元</span></button><button type="button" class="spine " data-id="daxie"><span class="t">《答谢中书书》</span><span class="a">陶弘景</span></button><button type="button" class="spine " data-id="chengtian"><span class="t">《记承天寺夜游》</span><span class="a">苏轼</span></button><button type="button" class="spine " data-id="zhuyuansi"><span class="t">《与朱元思书》</span><span class="a">吴均</span></button><button type="button" class="spine " data-id="yewang"><span class="t">《野望》</span><span class="a">王绩</span></button><button type="button" class="spine " data-id="huanghe"><span class="t">《黄鹤楼》</span><span class="a">崔颢</span></button><button type="button" class="spine " data-id="shizhai"><span class="t">《使至塞上》</span><span class="a">王维</span></button><button type="button" class="spine " data-id="dujingmen"><span class="t">《渡荆门送别》</span><span class="a">李白</span></button><button type="button" class="spine " data-id="qiantang"><span class="t">《钱塘湖春行》</span><span class="a">白居易</span></button></div>
+          <div class="panel sel-panel">
+            <div class="st" id="selTitle">《三峡》</div>
+            <div class="sm" id="selMeta">郦道元 · 地理志 · 文言</div>
+            <div class="sh" id="selHint"><small>名句提醒 · 回读一遍再下笔</small>「素湍绿潭，回清倒影」</div>
+          </div>
+        </div>
+
+        <form class="panel" id="entryForm" novalidate="">
+          <div class="field">
+            <label class="f-label" for="fName">我的名字<b>*</b></label>
+            <input type="text" id="fName" maxlength="12" placeholder="写下你的名字，方法会署上你的名">
+          </div>
+          <div class="field">
+            <span class="f-label">方法分类<b>*</b><span class="soft">这条方法最核心的一点是什么？</span></span>
+            <div class="cat-box" id="catBox"><button type="button" class="cchip on" style="--c:#3d5a73" data-id="view"><svg class="ic"><use href="#i-eye"></use></svg>描写角度</button><button type="button" class="cchip " style="--c:#8a6d3b" data-id="sense"><svg class="ic"><use href="#i-sound"></use></svg>感官调动</button><button type="button" class="cchip " style="--c:#2e6e5e" data-id="motion"><svg class="ic"><use href="#i-wave"></use></svg>动静结合</button><button type="button" class="cchip " style="--c:#5e4a78" data-id="xushi"><svg class="ic"><use href="#i-void"></use></svg>虚实结合</button><button type="button" class="cchip " style="--c:#b06a3b" data-id="image"><svg class="ic"><use href="#i-drop"></use></svg>意象与色彩</button><button type="button" class="cchip " style="--c:#7d4a5b" data-id="rhet"><svg class="ic"><use href="#i-brush"></use></svg>修辞炼字</button><button type="button" class="cchip " style="--c:#5b5344" data-id="struct"><svg class="ic"><use href="#i-grid"></use></svg>结构章法</button><button type="button" class="cchip " style="--c:#a83a2a" data-id="mood"><svg class="ic"><use href="#i-heart"></use></svg>情景交融</button></div>
+            <p class="cat-hint" id="catHint">远近、俯仰、定点与移动、正面与侧面烘托——你站在哪里看、从什么角度写</p>
+          </div>
+          <div class="field">
+            <label class="f-label" for="fMethod">方法名<b>*</b><span class="soft">越短越好，八个字以内</span></label>
+            <input type="text" id="fMethod" maxlength="16" placeholder="如：以动衬静 / 虚实结合 / 一字传神">
+            <div class="sug-box" id="sugBox">常用：<button type="button" class="sug" data-v="远近结合">远近结合</button><button type="button" class="sug" data-v="俯仰结合">俯仰结合</button><button type="button" class="sug" data-v="移步换景">移步换景</button><button type="button" class="sug" data-v="定点观察">定点观察</button><button type="button" class="sug" data-v="视角转换">视角转换</button><button type="button" class="sug" data-v="侧面烘托">侧面烘托</button></div>
+          </div>
+          <div class="field duo">
+            <div>
+              <label class="f-label" for="fEvidence">原文例证<b>*</b><span class="soft">抄一句最典型的原句</span></label>
+              <textarea id="fEvidence" class="kai" placeholder="如：素湍绿潭，回清倒影"></textarea>
+            </div>
+            <div>
+              <label class="f-label" for="fAnalysis">效果分析<span class="soft">这句妙在哪？</span></label>
+              <textarea id="fAnalysis" placeholder="说说它让景物有了什么效果，写出了怎样的境与情"></textarea>
+            </div>
+          </div>
+          <div class="field last-ask">
+            <label class="f-label" for="fTransfer"><i class="ask-seal">迁</i>最后一问 · 学以致用：这条方法，你想先用它来写家乡的哪处景？<b>*</b></label>
+            <input type="text" id="fTransfer" maxlength="20" placeholder="如：村口的小河 / 屋后的竹林">
+            <div class="sug-box" id="homeSug">常见家乡景：<button type="button" class="sug" data-v="村口的小河">村口的小河</button><button type="button" class="sug" data-v="屋后的竹林">屋后的竹林</button><button type="button" class="sug" data-v="门前的稻田">门前的稻田</button><button type="button" class="sug" data-v="村口的老槐树">村口的老槐树</button><button type="button" class="sug" data-v="清晨的老街">清晨的老街</button><button type="button" class="sug" data-v="外婆家的小院">外婆家的小院</button><button type="button" class="sug" data-v="江边的渡口">江边的渡口</button><button type="button" class="sug" data-v="夏夜的池塘">夏夜的池塘</button></div>
+          </div>
+          <div class="sub-row">
+            <button type="submit" class="tbtn primary" style="padding:11px 24px;font-size:15px"><svg class="ic"><use href="#i-plus"></use></svg>收入我的归纳</button>
+            <span class="tip"><svg class="ic"><use href="#i-check"></use></svg>好方法卡 = 方法名短而准 + 例证抄原句 + 分析讲效果 + 末了迁移家乡景</span>
+          </div>
+        </form>
+      </div>
+
+      <div class="mine">
+        <div class="mine-h">
+          <h3>已收录的归纳</h3><b id="mineCount">0</b><small>条 · 长期保存在本机 · 输入课堂代号后实时同步到全班</small>
+          <a class="go" href="https://chat.z.ai/space/q1gw37nz0ex1-art#board">查看班级清单 ↓</a>
+        </div>
+        <div id="mineList"><p class="mempty">还没有归纳——选一篇课文，写下第一条方法吧。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 贰 · 班级清单 -->
+  <section id="board" class="board-sec">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-no">贰</span><div><h2>班级写景方法清单</h2><p>全班的方法在此凝成一份清单 · 数字代表独立提出它的人数</p></div></div>
+
+      <div class="live-panel" id="livePanel" hidden="">
+        <div class="live-head">
+          <span class="live-dot"></span><b>课堂实时动态</b>
+          <span class="live-meta" id="liveMeta"></span>
+          <button type="button" class="tbtn" id="presentBtn" style="margin-left:auto"><svg class="ic"><use href="#i-grid"></use></svg>投影模式</button>
+        </div>
+        <div class="live-stream" id="liveFeed"></div>
+      </div>
+
+      <div class="board-tools" id="boardTools" style="display: none;">
+        <div id="textFilter" style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="tchip on" data-id="all">全部</button><button type="button" class="tchip " data-id="sanxia">三峡</button><button type="button" class="tchip " data-id="daxie">答谢中书书</button><button type="button" class="tchip " data-id="chengtian">记承天寺夜游</button><button type="button" class="tchip " data-id="zhuyuansi">与朱元思书</button><button type="button" class="tchip " data-id="yewang">野望</button><button type="button" class="tchip " data-id="huanghe">黄鹤楼</button><button type="button" class="tchip " data-id="shizhai">使至塞上</button><button type="button" class="tchip " data-id="dujingmen">渡荆门送别</button><button type="button" class="tchip " data-id="qiantang">钱塘湖春行</button></div>
+        <div class="sw"><svg class="ic"><use href="#i-search"></use></svg><input type="text" id="fSearch" placeholder="搜方法名 / 例证…"></div>
+        <button type="button" class="tbtn" id="btnScroll"><svg class="ic"><use href="#i-scroll"></use></svg>生成卷轴</button>
+        <button type="button" class="tbtn" id="btnCopy"><svg class="ic"><use href="#i-copy"></use></svg>复制文本</button>
+        <button type="button" class="tbtn" id="btnPrint"><svg class="ic"><use href="#i-print"></use></svg>打印 / 存PDF</button>
+      </div>
+      <p class="legend" style="display: none;">共识度：<i class="l1">个人发现</i>→<i class="l2">多人共识</i>→<i class="l3">全班焦点</i>　被越多人独立提出，越值得写进你的作文；每条下的绿色「迁」是同学们想到的家乡景，写任务八时直接取用。</p>
+
+      <div class="empty" id="boardEmpty" style="display: block;">
+        <div class="big">空山新雨 · 虚位以待</div>
+        <p>清单还是空的——先在上方写下第一条方法，或点击顶栏加入课堂同步。</p>
+        <a class="btn primary" href="https://chat.z.ai/space/q1gw37nz0ex1-art#contribute">去归纳第一条</a>
+      </div>
+
+      <div class="scrollwrap" id="scrollWrap" style="display:none">
+        <div class="rod rod-top"></div>
+        <div class="scrollpaper" id="scrollPaper">
+          <div class="bp-head">
+            <span class="bk">八年级上册 · 第三单元 · 山川之美</span>
+            <h3>写景方法清单</h3>
+            <p class="bp-meta" id="bpMeta"></p>
+            <div class="stamp stamped" id="stamp">山水<br>有法</div>
+          </div>
+          <div id="bpBody"></div>
+          <div class="bp-foot">
+            <p class="q">「既能从山川风物中解读古人的心灵，也能以审美的眼光观照自然、以恰当的方法再现风景。」</p>
+            <p class="s">单元大概念 · 下一步（任务八「写」）：带着这份清单，为家乡的一处景写一篇情景相融的文章</p>
+          </div>
+        </div>
+        <div class="rod rod-btm"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p class="fq">同写山水，情怀各异；一纸清单，人人带得走。</p>
+  <p class="fs">部编版语文八年级上册 · 第三单元「山川之美」 · 任务七「悟」：反思复盘 · 提炼方法<br>输入课堂代号实时同步 · 数据长期保存在本机浏览器</p>
+</footer>
+
+<!-- 实时课堂弹窗 -->
+<div class="modal-back" id="joinModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-label="实时课堂同步">
+    <h3><svg class="ic" style="width:20px;height:20px"><use href="#i-live"></use></svg>实时课堂同步<button type="button" class="mclose" id="jClose" aria-label="关闭"><svg class="ic"><use href="#i-x"></use></svg></button></h3>
+    <p class="mnote">全班设备打开本页后，输入<b>同一个课堂代号</b>即可实时同步：人人提交的归纳汇到每一块屏幕，数据同时长期保存在各设备本机。需联网（免费公共服务器中转，无需注册）；不联网时一切功能照常，可用「教师工具→导入/导出」合并。</p>
+    <div class="msec" id="joinFormSec">
+      <h4>输入课堂代号加入</h4>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input type="text" id="joinCode" maxlength="8" placeholder="如 7302">
+        <button type="button" class="tbtn primary" id="joinBtn">加入课堂</button>
+      </div>
+      <p class="mnote">代号 3–8 位字母或数字，由老师公布（同一间教室必须一致）。加入后保存在本机，下次打开自动连接。</p>
+    </div>
+    <div class="msec" id="joinInfoSec" hidden="">
+      <h4>当前课堂</h4>
+      <p class="mnote" id="joinInfo"></p>
+      <div class="mrow-btns">
+        <button type="button" class="tbtn" id="retryBtn"><svg class="ic"><use href="#i-refresh"></use></svg>重新连接</button>
+        <button type="button" class="tbtn danger" id="leaveBtn">退出同步（保留本机数据）</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 教师工具弹窗 -->
+<div class="modal-back" id="modal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-label="教师工具">
+    <h3><svg class="ic" style="width:20px;height:20px"><use href="#i-tools"></use></svg>教师工具<button type="button" class="mclose" id="mClose" aria-label="关闭"><svg class="ic"><use href="#i-x"></use></svg></button></h3>
+    <p class="mnote" id="mStat">本机现有 0 条归纳 · 0 位同学参与 · 0 处家乡景 · 存储：⚠ 无法持久保存 · 本机模式</p>
+    <div class="msec">
+      <h4>班级名称</h4>
+      <div style="display:flex;gap:10px"><input type="text" id="mClass" placeholder="如：初二（3）班" maxlength="20"><button type="button" class="tbtn" id="mSaveClass">保存</button></div>
+      <p class="mnote">保存后会显示在清单抬头（同步后全班统一显示最早设置的名称）。</p>
+    </div>
+    <div class="msec">
+      <h4>备用：数据汇总</h4>
+      <div class="mrow-btns">
+        <button type="button" class="tbtn" id="btnExport"><svg class="ic"><use href="#i-down"></use></svg>导出数据 (JSON)</button>
+        <button type="button" class="tbtn" id="btnImport"><svg class="ic"><use href="#i-up"></use></svg>导入并合并（可多选）</button>
+        <input type="file" id="importFile" accept=".json" multiple="" hidden="">
+      </div>
+      <p class="mnote">有网络时无需此功能（课堂代号实时同步）。网络受限的机房备用：学生机各自「导出」发给老师，教师机一次多选导入即自动合并去重。重要节点也建议导出一份备份。</p>
+    </div>
+    <div class="msec">
+      <h4>课堂管理</h4>
+      <div class="mrow-btns">
+        <button type="button" class="tbtn" id="btnSample"><svg class="ic"><use href="#i-plus"></use></svg>载入 19 条示例数据</button>
+        <button type="button" class="tbtn danger" id="btnClear"><svg class="ic"><use href="#i-trash"></use></svg>清空本机数据</button>
+      </div>
+      <p class="mnote">示例数据供课前预览，正式使用前先「清空」。清空需点两次确认；已连接课堂时，清空 / 载入也会同步到全班。数据长期保存在本机（重启电脑也在），勿用无痕窗口。</p>
+    </div>
+  </div>
+</div>
+
+<!-- 卷轴生成舞台 -->
+<div id="scrollStage" aria-hidden="true">
+  <p class="stage-title">—— 班级写景方法清单 · 全班长卷 ——</p>
+  <div class="theater" id="theater">
+    <div class="st-rod l"></div>
+    <div class="st-rod r"></div>
+    <div class="st-paper" id="stPaper"></div>
+  </div>
+  <div class="stage-bar">
+    <button type="button" class="tbtn" id="stSave"><svg class="ic"><use href="#i-down"></use></svg>保存为图片</button>
+    <button type="button" class="tbtn" id="stPrint"><svg class="ic"><use href="#i-print"></use></svg>打印</button>
+    <button type="button" class="tbtn" id="stClose"><svg class="ic"><use href="#i-x"></use></svg>收起卷轴</button>
+  </div>
+</div>
+
+<button type="button" class="exit-present" id="exitPresent"><svg class="ic"><use href="#i-x"></use></svg>退出投影</button>
+<div id="toast" role="status"></div>
+
+<script>
+/* ================= 基础数据 ================= */
+const TEXTS=[
+  {id:'sanxia',   t:'三峡',        a:'郦道元', g:'地理志 · 文言', hint:'素湍绿潭，回清倒影'},
+  {id:'daxie',    t:'答谢中书书',  a:'陶弘景', g:'骈文书信',      hint:'夕日欲颓，沉鳞竞跃'},
+  {id:'chengtian',t:'记承天寺夜游',a:'苏轼',   g:'小品文',        hint:'庭下如积水空明'},
+  {id:'zhuyuansi',t:'与朱元思书',  a:'吴均',   g:'骈文书信',      hint:'奇山异水，天下独绝'},
+  {id:'yewang',   t:'野望',        a:'王绩',   g:'五言律诗',      hint:'树树皆秋色，山山唯落晖'},
+  {id:'huanghe',  t:'黄鹤楼',      a:'崔颢',   g:'七言律诗',      hint:'晴川历历汉阳树，芳草萋萋鹦鹉洲'},
+  {id:'shizhai',  t:'使至塞上',    a:'王维',   g:'五言律诗',      hint:'大漠孤烟直，长河落日圆'},
+  {id:'dujingmen',t:'渡荆门送别',  a:'李白',   g:'五言律诗',      hint:'山随平野尽，江入大荒流'},
+  {id:'qiantang', t:'钱塘湖春行',  a:'白居易', g:'七言律诗',      hint:'几处早莺争暖树，谁家新燕啄春泥'}
+];
+const CATS=[
+  {id:'view',  name:'描写角度',  color:'#3d5a73', hint:'远近、俯仰、定点与移动、正面与侧面烘托——你站在哪里看、从什么角度写', tips:['远近结合','俯仰结合','移步换景','定点观察','视角转换','侧面烘托']},
+  {id:'sense', name:'感官调动',  color:'#8a6d3b', hint:'视、听、触、嗅——让画面有声有色有气息', tips:['视听结合','多感官结合']},
+  {id:'motion',name:'动静结合',  color:'#2e6e5e', hint:'以动衬静、动静相生——让山水"活"起来', tips:['以动衬静','动静相生','化静为动','以声衬静']},
+  {id:'xushi', name:'虚实结合',  color:'#5e4a78', hint:'眼前实景与想象、回忆之虚境相映——境生象外，言有尽而意无穷', tips:['虚实结合','化虚为实']},
+  {id:'image', name:'意象与色彩',color:'#b06a3b', hint:'选取典型意象、点染色彩——画面的选材与设色', tips:['选取典型意象','色彩点染','意象叠加']},
+  {id:'rhet',  name:'修辞炼字',  color:'#7d4a5b', hint:'比喻、拟人、夸张、对偶、叠词、一字传神——语言的功力', tips:['比喻','拟人','夸张','对偶','叠词','一字传神']},
+  {id:'struct',name:'结构章法',  color:'#5b5344', hint:'先总后分、按时序、空间顺序、线索贯穿——怎么组织一幅长卷', tips:['先总后分','按时序展开','空间顺序','线索贯穿']},
+  {id:'mood',  name:'情景交融',  color:'#a83a2a', hint:'融情于景、由景生情——一切景语皆情语', tips:['融情于景','由景生情','以景结情']}
+];
+const NUM=['壹','贰','叁','肆','伍','陆','柒','捌'];
+const ALIAS={'以动写静':'以动衬静','以静衬动':'以动衬静','动静相衬':'动静结合',
+  '虚实相生':'虚实结合','以虚衬实':'虚实结合','以虚写实':'化虚为实',
+  '多感官':'多感官结合','多感官描写':'多感官结合','总分':'先总后分','总分结构':'先总后分','总分结合':'先总后分',
+  '借景抒情':'融情于景','寓情于景':'融情于景','情景交融':'融情于景','定点换景':'定点观察','比喻传神':'比喻',
+  '打比方':'比喻','炼字':'一字传神','品味炼字':'一字传神','远近相生':'远近结合','视点移动':'移步换景','游踪为线':'移步换景'};
+const HOMES=['村口的小河','屋后的竹林','门前的稻田','村口的老槐树','清晨的老街','外婆家的小院','江边的渡口','夏夜的池塘'];
+const SAMPLES=[
+ {id:'s1', name:'陈雨桐', text:'sanxia',   cat:'struct', method:'先总后分',  evidence:'自三峡七百里中，两岸连山，略无阙处', analysis:'先总写七百里山势，再按夏、春冬、秋的时序分写水景，全文脉络一目了然。', transfer:'外婆家的小院', ts:1},
+ {id:'s2', name:'周子墨', text:'sanxia',   cat:'motion', method:'动静结合',  evidence:'素湍绿潭，回清倒影', analysis:'白浪急湍是动，绿潭倒影是静，一动一静，山水相映成趣。', transfer:'村口的小河', ts:2},
+ {id:'s3', name:'李慕言', text:'sanxia',   cat:'view',   method:'侧面烘托',  evidence:'自非亭午夜分，不见曦月', analysis:'不直说山高，只说正午半夜才见日月，山之高峻不言自明。', transfer:'清晨的集市', ts:3},
+ {id:'s4', name:'王一诺', text:'daxie',    cat:'image',  method:'色彩点染',  evidence:'两岸石壁，五色交辉；青林翠竹，四时俱备', analysis:'五色石壁与青翠竹林交相辉映，像一幅设色浓丽的青绿山水。', transfer:'门前的稻田', ts:4},
+ {id:'s5', name:'吴悠',   text:'daxie',    cat:'sense',  method:'视听结合',  evidence:'晓雾将歇，猿鸟乱鸣；夕日欲颓，沉鳞竞跃', analysis:'晨雾落日入眼，猿鸣鱼跃入耳，画面有声有色。', transfer:'夏夜的池塘', ts:5},
+ {id:'s6', name:'郑亦楠', text:'chengtian',cat:'rhet',   method:'比喻',      evidence:'庭下如积水空明，水中藻、荇交横，盖竹柏影也', analysis:'月光比作积水、竹影比作藻荇，不着一"月"字，满地月光如在眼前。', transfer:'雨后的老街', ts:6},
+ {id:'s7', name:'赵清越', text:'chengtian',cat:'mood',   method:'融情于景',  evidence:'庭下如积水空明，水中藻、荇交横，盖竹柏影也', analysis:'空明的月色里，溶着贬谪的悲凉与漫步的悠闲——情在景中，不着一"情"字。', transfer:'老屋的天井', ts:7},
+ {id:'s8', name:'孙晚晴', text:'zhuyuansi',cat:'motion', method:'以声衬静',  evidence:'泉水激石，泠泠作响；好鸟相鸣，嘤嘤成韵', analysis:'泉声鸟鸣愈清越，山中愈显幽静，以声写静，静得更深。', transfer:'屋后的竹林', ts:8},
+ {id:'s9', name:'何思远', text:'zhuyuansi',cat:'rhet',   method:'比喻',      evidence:'急湍甚箭，猛浪若奔', analysis:'急流比箭、猛浪比奔马，写出水的湍急奔腾之势。', transfer:'雨中的江堤', ts:9},
+ {id:'s10',name:'罗小满', text:'yewang',   cat:'image',  method:'选取典型意象', evidence:'树树皆秋色，山山唯落晖', analysis:'以"秋""暮"两组意象晕染出萧瑟氛围。', transfer:'郊外的田野', ts:10},
+ {id:'s11',name:'许南风', text:'huanghe',  cat:'mood',   method:'由景生情',  evidence:'日暮乡关何处是？烟波江上使人愁', analysis:'暮色烟波之上，乡愁随江水漫上心头，景尽而情不尽。', transfer:'黄昏的渡口', ts:11},
+ {id:'s12',name:'陈雨桐', text:'shizhai',  cat:'rhet',   method:'一字传神',  evidence:'大漠孤烟直，长河落日圆', analysis:'"直"字写出孤烟劲拔，"圆"字写出落日浑圆，构图如画。', transfer:'辽阔的麦田', ts:12},
+ {id:'s13',name:'周子墨', text:'dujingmen',cat:'view',   method:'移步换景',  evidence:'山随平野尽，江入大荒流', analysis:'人随船行，群山渐隐、原野徐展，视点移动，画面由狭入阔。', transfer:'沿河的小路', ts:13},
+ {id:'s14',name:'吴悠',   text:'qiantang', cat:'view',   method:'移步换景',  evidence:'孤山寺北贾亭西，最爱湖东行不足', analysis:'以游踪为线索，串起一路早春之景。', transfer:'逛老街', ts:14},
+ {id:'s15',name:'林亦然', text:'qiantang', cat:'image',  method:'选取典型意象', evidence:'几处早莺争暖树，谁家新燕啄春泥', analysis:'早莺、新燕、暖树、春泥，专挑早春独有的意象。', transfer:'外婆家的菜园', ts:15},
+ {id:'s16',name:'林亦然', text:'yewang',   cat:'motion', method:'动静结合',  evidence:'牧人驱犊返，猎马带禽归', analysis:'牧人猎马的动，反衬秋野的静，静谧里添了烟火气。', transfer:'村口的老槐树', ts:16},
+ {id:'s17',name:'罗小满', text:'zhuyuansi',cat:'sense',  method:'视听结合',  evidence:'泉水激石，泠泠作响；好鸟相鸣，嘤嘤成韵', analysis:'眼观奇山异水，耳闻泉响鸟鸣，山水皆活。', transfer:'山间的溪流', ts:17},
+ {id:'s18',name:'赵清越', text:'qiantang', cat:'rhet',   method:'一字传神',  evidence:'几处早莺争暖树', analysis:'一个"争"字写出早莺抢占暖树的活泼劲儿。', transfer:'晒谷场', ts:18},
+ {id:'s19',name:'许南风', text:'huanghe',  cat:'xushi',  method:'虚实结合',  evidence:'昔人已乘黄鹤去，此地空余黄鹤楼', analysis:'仙人乘鹤是虚，空余此楼是实，虚实相映，吊古伤今之情油然而生。', transfer:'江边的老渡口', ts:19}
+];
+
+/* ================= 安全存储 ================= */
+const store={
+  mem:{},
+  usable:(()=>{try{localStorage.setItem('__xj_test','1');localStorage.removeItem('__xj_test');return true}catch(e){return false}})(),
+  get(k){ if(this.usable){try{return localStorage.getItem(k)}catch(e){}} return (k in this.mem)?this.mem[k]:null },
+  set(k,v){ this.mem[k]=v; if(!this.usable)return; try{localStorage.setItem(k,v)}catch(e){ this.usable=false; updateStoreStatus(); } },
+  remove(k){ delete this.mem[k]; if(this.usable){try{localStorage.removeItem(k)}catch(e){}} }
+};
+
+/* ================= 状态 ================= */
+const LS='xj_list_v1', LSK_USER='xj_user_name', LSK_TEXT='xj_last_text', LSK_ROOM='xj_room';
+let state=(()=>{try{const d=JSON.parse(store.get(LS));if(d&&Array.isArray(d.entries))return{entries:d.entries,tomb:d.tomb||{},meta:d.meta||{}}}catch(e){}return{entries:[],tomb:{},meta:{}}})();
+let curText=store.get(LSK_TEXT)||TEXTS[0].id;
+let curCat=CATS[0].id, filterText='all';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const title=id=>(TEXTS.find(t=>t.id===id)||{t:id}).t;
+const catObj=id=>CATS.find(c=>c.id===id)||{name:'其他',color:'#999'};
+const normMethod=s=>{s=String(s||'').trim().replace(/\s+/g,'');return ALIAS[s]||s};
+const normTrans=s=>String(s||'').trim().replace(/[。．.，,、；;！!？?\s]+$/,'');
+const save=()=>store.set(LS,JSON.stringify(state));
+
+let toastTimer;
+function toast(msg,err){const t=$('#toast');t.textContent=msg;t.className='show'+(err?' err':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='',3400)}
+function dateStr(){const d=new Date();return `${d.getMonth()+1}月${d.getDate()}日`}
+const stuCount=()=>new Set(state.entries.map(e=>e.name||'佚名')).size;
+const textsCovered=()=>new Set(state.entries.map(e=>e.text)).size;
+const sceneCount=()=>new Set(state.entries.map(e=>normTrans(e.transfer)).filter(Boolean)).size;
+function updateStoreStatus(){$('#storeWarn').hidden=store.usable}
+
+/* ================= 实时课堂同步（公共 MQTT 中转，手动课堂代号） ================= */
+const CID='c'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
+const TOPIC=r=>'shanshui-t7/'+r+'/gossip';
+let room=store.get(LSK_ROOM)||'';
+let client=null, syncState='off', brokerIdx=0, pubTimer=null;
+let peers={}, onlineCount=0;
+const feedItems=[];
+
+const pickE=e=>({id:e.id,name:e.name||'',text:e.text||'',cat:e.cat||'',method:e.method,evidence:e.evidence,analysis:e.analysis||'',transfer:e.transfer||'',ts:e.ts||0});
+function sanitizeE(e){return{id:String(e.id),name:String(e.name||'').slice(0,12),text:String(e.text||''),cat:String(e.cat||''),method:String(e.method).slice(0,16),evidence:String(e.evidence).slice(0,120),analysis:String(e.analysis||'').slice(0,220),transfer:String(e.transfer||'').slice(0,24),ts:+e.ts||Date.now()}}
+
+function mergeRemote(entries,tomb,meta){
+  let changed=false; const added=[];
+  const have=new Set(state.entries.map(e=>e.id));
+  (entries||[]).forEach(e=>{
+    if(!e||!e.id||have.has(e.id)||state.tomb[e.id])return;
+    if(!e.method||!e.evidence)return;
+    state.entries.push(sanitizeE(e)); have.add(e.id); added.push(e.id); changed=true;
+  });
+  Object.entries(tomb||{}).forEach(([id,ts])=>{ if(!state.tomb[id]||state.tomb[id]<ts){state.tomb[id]=ts;changed=true} });
+  const b=state.entries.length;
+  state.entries=state.entries.filter(e=>!state.tomb[e.id]);
+  if(state.entries.length!==b)changed=true;
+  if(meta&&meta.className&&!state.meta.className){state.meta.className=meta.className;changed=true}
+  return {changed,added};
+}
+function publishNow(){
+  if(!client||syncState!=='on'||!room)return;
+  try{client.publish(TOPIC(room),JSON.stringify({v:1,from:CID,ts:Date.now(),meta:state.meta,tomb:state.tomb,entries:state.entries.map(pickE)}),{retain:true,qos:0})}catch(e){}
+}
+function schedulePublish(){if(syncState!=='on')return;clearTimeout(pubTimer);pubTimer=setTimeout(publishNow,1200)}
+
+function setSync(st){syncState=st;renderSyncChip();renderJoinInfo()}
+function startSync(){
+  if(!room)return;
+  if(!window.mqtt){setSync('fail');toast('同步组件未能加载（可能网络受限），当前为本机模式',1);return}
+  brokerIdx=0;setSync('try');connectBroker();
+}
+function connectBroker(){
+  if(!room)return;
+  const url=BROKERS[brokerIdx];
+  let c;
+  try{c=mqtt.connect(url,{clientId:CID,clean:true,keepalive:30,connectTimeout:7000,reconnectPeriod:0})}catch(e){brokerFallback();return}
+  client=c;
+  let opened=false;
+  c.on('connect',()=>{
+    opened=true;setSync('on');peers={[CID]:Date.now()};
+    try{c.subscribe(TOPIC(room),{qos:0})}catch(e){}
+    publishNow();renderSyncChip();renderJoinInfo();
+    toast(`已加入课堂「${room}」· 提交将实时同步到全班`);
+  });
+  c.on('message',(t,payload)=>{
+    let d;try{d=JSON.parse(payload.toString())}catch(e){return}
+    if(!d||d.v!==1||d.from===CID)return;
+    peers[d.from]=Date.now();
+    const {changed,added}=mergeRemote(d.entries,d.tomb,d.meta);
+    if(changed){save();renderAll(false);pushFeed(added);schedulePublish()}
+    renderOnline();
+  });
+  const drop=()=>{
+    if(!room||syncState==='off')return;
+    if(opened&&brokerIdx<BROKERS.length-1){brokerIdx++;setTimeout(connectBroker,800)}
+    else if(!opened){brokerFallback()}
+    else{setSync('fail')}
+    try{c.end(true)}catch(e){}
+    if(client===c)client=null;
+  };
+  c.on('close',drop);c.on('error',drop);
+}
+function brokerFallback(){
+  if(brokerIdx<BROKERS.length-1){brokerIdx++;setTimeout(connectBroker,600)}
+  else setSync('fail');
+}
+function leaveRoom(){
+  room='';store.set(LSK_ROOM,'');setSync('off');
+  try{client&&client.end(true)}catch(e){}client=null;peers={};onlineCount=0;
+  renderSyncChip();renderJoinInfo();toast('已退出课堂同步，本机数据保留');
+}
+setInterval(()=>{
+  const now=Date.now();let n=0;for(const k in peers)if(now-peers[k]<90000)n++;
+  onlineCount=n;renderSyncChip();renderOnline();
+},15000);
+
+/* 实时动态 feed */
+function timeAgo(ts){const d=Date.now()-ts;if(d<60000)return'刚刚';if(d<3600000)return Math.floor(d/60000)+' 分钟前';const t=new Date(ts);return `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`}
+function pushFeed(ids){
+  if(!ids||!ids.length)return;
+  const byId={};state.entries.forEach(e=>byId[e.id]=e);
+  const bulk=ids.length>3, list=bulk?ids.slice(-3):ids;
+  list.forEach(id=>{const e=byId[id];if(e)feedItems.unshift({e,ts:Date.now()})});
+  if(bulk)feedItems.unshift({sys:`已从课堂同步汇入 ${ids.length} 条归纳`,ts:Date.now()});
+  if(feedItems.length>14)feedItems.length=14;
+  renderFeed();
+}
+function pushFeedOne(e){feedItems.unshift({e,ts:Date.now()});if(feedItems.length>14)feedItems.length=14;renderFeed()}
+function renderFeed(){
+  const box=$('#liveFeed'),panel=$('#livePanel');
+  const show=!!(room&&syncState==='on')||feedItems.length>0;
+  panel.hidden=!show;
+  if(!show)return;
+  box.innerHTML=feedItems.map(f=>f.sys
+    ?`<div class="live-card sys">${esc(f.sys)} · ${timeAgo(f.ts)}</div>`
+    :`<div class="live-card"><span class="ln">${esc(f.e.name||'佚名')}</span><span class="lt">《${esc(title(f.e.text))}》· ${esc(f.e.method)}</span><span class="lq kai">「${esc(f.e.evidence)}」</span>${f.e.transfer?`<span class="lto">↳ 写家乡：${esc(f.e.transfer)}</span>`:''}<span class="ltm">${timeAgo(f.ts)}</span></div>`
+  ).join('');
+}
+function renderOnline(){
+  const el=$('#liveMeta');if(!el)return;
+  el.textContent=room&&syncState==='on'?`课堂 ${room} · ${onlineCount||1} 台设备在线 · ${stuCount()} 位同学 · ${state.entries.length} 条归纳`:'';
+}
+function renderSyncChip(){
+  const chip=$('#syncChip'),txt=$('#syncTxt');if(!chip)return;
+  chip.classList.remove('on','warn','bad');
+  if(room&&syncState==='on'){chip.classList.add('on');txt.textContent=`课堂 ${room} · ${onlineCount||1} 台在线`}
+  else if(room&&syncState==='try'){chip.classList.add('warn');txt.textContent='正在连接课堂…'}
+  else if(room&&syncState==='fail'){chip.classList.add('bad');txt.textContent='课堂连接失败 · 本机模式'}
+  else txt.textContent='本机模式 · 点击同步';
+}
+function renderJoinInfo(){
+  const info=$('#joinInfo');if(!info)return;
+  const has=!!room;
+  $('#joinFormSec').hidden=has;$('#joinInfoSec').hidden=!has;
+  if(has)info.textContent=`课堂代号「${room}」 · ${onlineCount||1} 台设备在线 · ${stuCount()} 位同学 · ${state.entries.length} 条归纳 · 状态：${{on:'已连接',try:'连接中…',fail:'连接失败（可点"重新连接"）',off:'未连接'}[syncState]}`;
+}
+
+/* 加入弹窗 */
+const joinModal=$('#joinModal');
+function openJoin(){$('#joinCode').value=room;renderJoinInfo();joinModal.classList.add('open');joinModal.setAttribute('aria-hidden','false')}
+function closeJoin(){joinModal.classList.remove('open');joinModal.setAttribute('aria-hidden','true')}
+$('#syncChip').addEventListener('click',openJoin);
+$('#jClose').addEventListener('click',closeJoin);
+joinModal.addEventListener('click',e=>{if(e.target===joinModal)closeJoin()});
+$('#joinBtn').addEventListener('click',()=>{
+  const v=$('#joinCode').value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{3,8}$/.test(v)){toast('请输入 3–8 位课堂代号（字母或数字），与全班一致',1);return}
+  room=v;store.set(LSK_ROOM,room);closeJoin();startSync();
+  setTimeout(()=>$('#board').scrollIntoView({behavior:'smooth'}),200);
+});
+$('#joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('#joinBtn').click()});
+$('#retryBtn').addEventListener('click',()=>startSync());
+$('#leaveBtn').addEventListener('click',()=>{leaveRoom();closeJoin()});
+
+/* ================= 渲染：书脊 / 分类 / 提示 ================= */
+function renderSpines(){
+  $('#spineBox').innerHTML=TEXTS.map(t=>`<button type="button" class="spine ${t.id===curText?'on':''}" data-id="${t.id}"><span class="t">《${t.t}》</span><span class="a">${t.a}</span></button>`).join('');
+  updateSelPanel();
+}
+function updateSelPanel(){
+  const t=TEXTS.find(x=>x.id===curText);
+  $('#selTitle').textContent=`《${t.t}》`;
+  $('#selMeta').textContent=`${t.a} · ${t.g}`;
+  $('#selHint').innerHTML=`<small>名句提醒 · 回读一遍再下笔</small>「${t.hint}」`;
+}
+$('#spineBox').addEventListener('click',e=>{
+  const b=e.target.closest('.spine');if(!b)return;
+  curText=b.dataset.id;store.set(LSK_TEXT,curText);
+  document.querySelectorAll('.spine').forEach(s=>s.classList.toggle('on',s.dataset.id===curText));
+  updateSelPanel();
+});
+function renderCats(){
+  $('#catBox').innerHTML=CATS.map(c=>`<button type="button" class="cchip ${c.id===curCat?'on':''}" style="--c:${c.color}" data-id="${c.id}"><svg class="ic"><use href="#i-${{view:'eye',sense:'sound',motion:'wave',xushi:'void',image:'drop',rhet:'brush',struct:'grid',mood:'heart'}[c.id]}"/></svg>${c.name}</button>`).join('');
+  renderSug();
+}
+function renderSug(){
+  const c=CATS.find(x=>x.id===curCat);
+  $('#catHint').textContent=c.hint;
+  $('#sugBox').innerHTML='常用：'+c.tips.map(t=>`<button type="button" class="sug" data-v="${t}">${t}</button>`).join('');
+}
+$('#catBox').addEventListener('click',e=>{
+  const b=e.target.closest('.cchip');if(!b)return;
+  curCat=b.dataset.id;
+  document.querySelectorAll('.cchip').forEach(x=>x.classList.toggle('on',x.dataset.id===curCat));
+  renderSug();
+});
+$('#sugBox').addEventListener('click',e=>{const b=e.target.closest('.sug');if(b){$('#fMethod').value=b.dataset.v;$('#fMethod').classList.remove('ferr');$('#fMethod').focus()}});
+function renderHomeSug(){$('#homeSug').innerHTML='常见家乡景：'+HOMES.map(h=>`<button type="button" class="sug" data-v="${h}">${h}</button>`).join('')}
+$('#homeSug').addEventListener('click',e=>{const b=e.target.closest('.sug');if(b){$('#fTransfer').value=b.dataset.v;$('#fTransfer').classList.remove('ferr');$('#fTransfer').focus()}});
+
+/* ================= 提交方法卡 ================= */
+function markErr(el,bad){el.classList.toggle('ferr',bad);return bad}
+$('#fName').value=store.get(LSK_USER)||'';
+$('#fName').addEventListener('input',()=>store.set(LSK_USER,$('#fName').value.trim()));
+['fName','fMethod','fEvidence','fTransfer'].forEach(id=>$('#'+id).addEventListener('input',e=>e.target.classList.remove('ferr')));
+
+$('#entryForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=$('#fName').value.trim(),method=$('#fMethod').value.trim(),ev=$('#fEvidence').value.trim(),
+        an=$('#fAnalysis').value.trim(),tr=normTrans($('#fTransfer').value);
+  let bad=false;
+  bad=markErr($('#fName'),!name)||bad;bad=markErr($('#fMethod'),!method)||bad;
+  bad=markErr($('#fEvidence'),!ev)||bad;bad=markErr($('#fTransfer'),!tr)||bad;
+  if(bad){toast('还差一点：名字、方法名、原文例证、最后的迁移都要填好',1);return}
+  if(state.entries.some(x=>x.name===name&&x.text===curText&&normMethod(x.method)===normMethod(method)&&x.evidence===ev)){
+    toast('这条方法你已经提交过啦，再找一条新的吧',1);return}
+  const entry={id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,text:curText,cat:curCat,method,evidence:ev,analysis:an,transfer:tr,ts:Date.now()};
+  state.entries.push(entry);
+  save();renderAll(false);
+  const first=$('#mineList').querySelector('.lrow');
+  if(first){first.classList.add('flash');first.scrollIntoView({behavior:'smooth',block:'nearest'})}
+  pushFeedOne(entry);
+  if(syncState==='on')publishNow();
+  $('#fMethod').value='';$('#fEvidence').value='';$('#fAnalysis').value='';$('#fTransfer').value='';
+  toast(`已收入清单 · 全班第 ${state.entries.length} 条`+(syncState==='on'?' · 已实时同步到全班':'')+(!store.usable?'（⚠ 本环境无法持久保存，请尽快导出备份）':''),!store.usable);
+});
+
+/* ================= 我的归纳 ================= */
+function renderMine(){
+  const list=[...state.entries].sort((a,b)=>b.ts-a.ts);
+  $('#mineCount').textContent=list.length;
+  if(!list.length){$('#mineList').innerHTML='<p class="mempty">还没有归纳——选一篇课文，写下第一条方法吧。</p>';return}
+  $('#mineList').innerHTML=list.map(e=>{const c=catObj(e.cat);return `<div class="lrow">
+    <div class="ltag"><b>《${esc(title(e.text))}》</b><span><i style="background:${c.color}"></i>${esc(c.name)}</span><em>${esc(e.name||'佚名')}</em></div>
+    <div class="lmain"><b class="mth">${esc(e.method)}</b><span class="q kai">「${esc(e.evidence)}」</span>${e.analysis?`<p>${esc(e.analysis)}</p>`:''}${e.transfer?`<div class="tra">${esc(e.transfer)}</div>`:''}</div>
+    <button type="button" class="del" data-id="${e.id}"><svg class="ic" style="width:13px;height:13px"><use href="#i-trash"/></svg>删除</button>
+  </div>`}).join('');
+}
+$('#mineList').addEventListener('click',e=>{
+  const b=e.target.closest('.del');if(!b)return;
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='确认删除';setTimeout(()=>{b.classList.remove('arm');b.innerHTML='<svg class="ic" style="width:13px;height:13px"><use href="#i-trash"/></svg>删除'},2600);return}
+  const id=b.dataset.id;
+  state.tomb[id]=Date.now();
+  state.entries=state.entries.filter(x=>x.id!==id);
+  save();renderAll(false);schedulePublish();toast('已删除这条归纳（同步到全班）');
+});
+
+/* ================= 统计 ================= */
+function renderStats(){
+  $('#stStu').textContent=stuCount();$('#stCnt').textContent=state.entries.length;
+  $('#stTxt').textContent=textsCovered();$('#stScene').textContent=sceneCount();
+  $('#mStat').textContent=`本机现有 ${state.entries.length} 条归纳 · ${stuCount()} 位同学参与 · ${sceneCount()} 处家乡景 · 存储：${store.usable?'正常（长期保存）':'⚠ 无法持久保存'}${room?' · 课堂 '+room+' 已连接':' · 本机模式'}`;
+  updateStoreStatus();renderOnline();renderSyncChip();
+}
+
+/* ================= 聚合 ================= */
+function aggregate(){
+  const map={};CATS.forEach(c=>map[c.id]=[]);
+  for(const e of state.entries){
+    if(!map[e.cat])continue;
+    const key=normMethod(e.method);if(!key)continue;
+    let m=map[e.cat].find(x=>x.key===key);
+    if(!m){m={key,name:key,items:[]};map[e.cat].push(m)}
+    m.items.push(e);
+  }
+  CATS.forEach(c=>{
+    map[c.id].forEach(m=>{
+      m.students=[...new Set(m.items.map(e=>e.name||'佚名'))];
+      m.texts=[...new Set(m.items.map(e=>e.text))];
+      const tc={};m.items.forEach(e=>{const t=normTrans(e.transfer);if(t)tc[t]=(tc[t]||0)+1});
+      m.tra=Object.entries(tc).sort((a,b)=>b[1]-a[1]);
+      m.items.sort((a,b)=>(b.analysis||'').length-(a.analysis||'').length);
+    });
+    map[c.id].sort((a,b)=>b.students.length-a.students.length||b.items.length-a.items.length);
+  });
+  return map;
+}
+function lexRow(m){
+  const stu=m.students;
+  const badge=stu.length>=4?['b3','全班焦点']:stu.length>=2?['b2',stu.length+' 人共识']:['b1','个人发现'];
+  const quotes=[],seen=new Set();
+  for(const e of m.items){if(seen.has(e.evidence))continue;seen.add(e.evidence);quotes.push(e);if(quotes.length>=2)break}
+  const rest=new Set(m.items.map(e=>e.evidence)).size-quotes.length;
+  const by=stu.length>4?stu.slice(0,4).join('、')+' 等':stu.join('、');
+  const a0=quotes[0].analysis;
+  const traHtml=m.tra.length?`<p class="mtra"><i>迁</i>可用来写家乡的：${m.tra.slice(0,6).map(([t,n])=>`<span>${esc(t)}${n>1?' ×'+n:''}</span>`).join('')}${m.tra.length>6?'<span>…</span>':''}</p>`:'';
+  return `<div class="lexrow">
+    <div class="mname"><h4>${esc(m.name)}</h4><span class="badge ${badge[0]}">${badge[1]}</span>
+      <div class="mtags">${m.texts.map(t=>`<span>《${esc(title(t))}》</span>`).join('')}</div>
+      <div class="mby">提出：${esc(by)}</div></div>
+    <div class="mdetail">
+      ${quotes.map(e=>`<blockquote>「${esc(e.evidence)}」<cite>——《${esc(title(e.text))}》 · ${esc(e.name||'佚名')}</cite></blockquote>`).join('')}
+      ${a0?`<p class="mana"><i>妙</i>${esc(a0)}</p>`:''}
+      ${traHtml}
+      ${rest>0?`<p class="mrest">· 另有 ${rest} 条不同例证 ·</p>`:''}
+    </div></div>`;
+}
+function metaLine(){
+  const cn=state.meta.className?`<b>${esc(state.meta.className)}</b><span class="dsep">◆</span>`:'';
+  return `${cn}据 ${stuCount()} 位同学的 ${state.entries.length} 条归纳凝成<span class="dsep">◆</span>覆盖 ${textsCovered()} 篇课文 · 可迁移家乡景 ${sceneCount()} 处<span class="dsep">◆</span>${dateStr()}更新`;
+}
+function boardHTML(filter){
+  const agg=aggregate(),q=(filter||'').trim().toLowerCase();
+  let html='',shown=0;
+  CATS.forEach((c,ci)=>{
+    const ms=agg[c.id].filter(m=>(filterText==='all'||m.texts.includes(filterText))&&
+      (!q||m.name.toLowerCase().includes(q)||m.items.some(e=>(e.evidence+e.method+e.transfer).toLowerCase().includes(q))));
+    if(!ms.length)return;shown+=ms.length;
+    html+=`<div class="csec" style="--c:${c.color}"><div class="chead">
+      <span class="cnum">${NUM[ci]}</span><div class="ct"><h3>${c.name}</h3><p>${c.hint}</p></div>
+      <span class="ccount">共 ${ms.length} 条</span></div>${ms.map(lexRow).join('')}</div>`;
+  });
+  if(!shown)html='<p class="nomatch">没有匹配的方法——换个筛选条件试试。</p>';
+  return html;
+}
+function renderBoard(animate){
+  const has=state.entries.length>0;
+  $('#boardEmpty').style.display=has?'none':'block';
+  $('#boardTools').style.display=has?'flex':'none';
+  document.querySelector('.legend').style.display=has?'block':'none';
+  $('#scrollWrap').style.display=has?'block':'none';
+  if(!has)return;
+  $('#bpBody').innerHTML=boardHTML($('#fSearch').value);
+  $('#bpMeta').innerHTML=metaLine();
+  animate?playUnroll():$('#stamp').classList.add('stamped');
+}
+function renderAll(a){renderStats();renderMine();renderBoard(a)}
+
+/* ================= 内嵌卷轴动画（首次展示） ================= */
+let rolling=false,played=false;
+function playUnroll(){
+  if(rolling)return;
+  const p=$('#scrollPaper'),st=$('#stamp');
+  st.classList.remove('stamped');
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){st.classList.add('stamped');return}
+  rolling=true;p.style.height='0px';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    p.style.transition='height 1.5s cubic-bezier(.65,0,.25,1)';
+    p.style.height=p.scrollHeight+'px';
+    setTimeout(()=>{p.style.transition='';p.style.height='auto';st.classList.add('stamped');rolling=false},1560);
+  }));
+}
+new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting&&!played&&state.entries.length){played=true;playUnroll()}})},{threshold:.15}).observe($('#board'));
+
+/* ================= 生成卷轴（全屏长卷 + 保存图片） ================= */
+const scrollStage=$('#scrollStage');
+function openScroll(){
+  if(!state.entries.length){toast('清单还是空的——先归纳再凝卷',1);return}
+  $('#stPaper').innerHTML=`
+    <div class="bp-head">
+      <span class="bk">八年级上册 · 第三单元 · 山川之美</span>
+      <h3>写景方法清单</h3>
+      <p class="bp-meta">${metaLine()}</p>
+      <div class="stamp">山水<br>有法</div>
+    </div>
+    ${(()=>{const agg=aggregate();let h='';CATS.forEach((c,ci)=>{const ms=agg[c.id];if(!ms.length)return;
+      h+=`<div class="csec" style="--c:${c.color}"><div class="chead"><span class="cnum">${NUM[ci]}</span><div class="ct"><h3>${c.name}</h3><p>${c.hint}</p></div><span class="ccount">共 ${ms.length} 条</span></div>${ms.map(lexRow).join('')}</div>`});return h})()}
+    <div class="bp-foot">
+      <p class="q">「既能从山川风物中解读古人的心灵，也能以审美的眼光观照自然、以恰当的方法再现风景。」</p>
+      <p class="s">单元大概念 · 下一步（任务八「写」）：带着这份清单，为家乡的一处景写一篇情景相融的文章</p>
+    </div>`;
+  const th=$('#theater');
+  th.classList.remove('unrolled');scrollStage.classList.remove('reveal');
+  scrollStage.classList.add('open');scrollStage.setAttribute('aria-hidden','false');
+  scrollStage.scrollTop=0;
+  setTimeout(()=>th.classList.add('unrolled'),80);
+  setTimeout(()=>scrollStage.classList.add('reveal'),2100);
+  toast('卷轴生成中——长卷自中央展开，落印后可保存为图片');
+}
+function closeScroll(){scrollStage.classList.remove('open');scrollStage.setAttribute('aria-hidden','true')}
+$('#btnScroll').addEventListener('click',openScroll);
+$('#stClose').addEventListener('click',closeScroll);
+$('#stPrint').addEventListener('click',()=>{
+  document.body.classList.add('printing-stage');
+  window.print();
+  setTimeout(()=>document.body.classList.remove('printing-stage'),800);
+});
+$('#stSave').addEventListener('click',()=>{
+  if(typeof html2canvas==='undefined'){toast('图片组件未加载（网络受限），请改用「打印」',1);return}
+  toast('正在生成长图，清单较长请稍候…');
+  html2canvas($('#stPaper'),{backgroundColor:'#fbf7ec',scale:2,useCORS:true}).then(canvas=>{
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/png');
+    a.download=`班级写景方法清单_${dateStr()}.png`;a.click();
+    toast('长卷图片已保存，可发到班级群');
+  }).catch(()=>toast('生成失败，请改用「打印」',1));
+});
+
+/* ================= 投影模式 ================= */
+$('#presentBtn').addEventListener('click',()=>{document.body.classList.add('present');toast('投影模式：已隐藏录入区，Esc 或右下角按钮退出')});
+$('#exitPresent').addEventListener('click',()=>document.body.classList.remove('present'));
+
+/* ================= 筛选 / 打印 / 复制 ================= */
+function renderTextFilter(){
+  $('#textFilter').innerHTML=[{id:'all',t:'全部'}].concat(TEXTS).map(t=>`<button type="button" class="tchip ${t.id===filterText?'on':''}" data-id="${t.id}">${t.t}</button>`).join('');
+}
+$('#textFilter').addEventListener('click',e=>{
+  const b=e.target.closest('.tchip');if(!b)return;
+  filterText=b.dataset.id;
+  document.querySelectorAll('.tchip').forEach(x=>x.classList.toggle('on',x.dataset.id===filterText));
+  renderBoard(false);
+});
+$('#fSearch').addEventListener('input',()=>renderBoard(false));
+$('#btnPrint').addEventListener('click',()=>window.print());
+$('#btnCopy').addEventListener('click',()=>{
+  if(!state.entries.length){toast('清单还是空的',1);return}
+  const agg=aggregate(),L=[];
+  L.push(`班级写景方法清单${state.meta.className?'（'+state.meta.className+'）':''}`);
+  L.push(`据 ${stuCount()} 位同学的 ${state.entries.length} 条归纳凝成 · 覆盖 ${textsCovered()} 篇课文 · 可迁移家乡景 ${sceneCount()} 处 · ${dateStr()}`);
+  CATS.forEach((c,ci)=>{
+    const ms=agg[c.id];if(!ms.length)return;
+    L.push('');L.push(`${NUM[ci]} ${c.name}`);
+    ms.forEach((m,i)=>{
+      L.push(`${i+1}. ${m.name}（${m.students.length}人提出 | 来源：${m.texts.map(title).map(t=>'《'+t+'》').join('、')}）`);
+      m.items.slice(0,2).forEach(e=>L.push(`   例：「${e.evidence}」——《${title(e.text)}》· ${e.name||'佚名'}${e.analysis?'　妙在：'+e.analysis:''}`));
+      if(m.tra.length)L.push(`   ↳ 可迁移写：${m.tra.slice(0,6).map(([t,n])=>t+(n>1?'×'+n:'')).join('、')}`);
+    });
+  });
+  const text=L.join('\n');
+  (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).then(()=>toast('清单全文已复制，可直接粘贴到文档')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('清单全文已复制')});
+});
+
+/* ================= 教师工具 ================= */
+const modal=$('#modal');
+function openModal(){renderStats();$('#mClass').value=state.meta.className||'';modal.classList.add('open');modal.setAttribute('aria-hidden','false')}
+function closeModal(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
+$('#toolsBtn').addEventListener('click',openModal);
+$('#mClose').addEventListener('click',closeModal);
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeJoin();closeScroll();document.body.classList.remove('present')}});
+
+$('#mSaveClass').addEventListener('click',()=>{state.meta.className=$('#mClass').value.trim();save();renderBoard(false);schedulePublish();toast('班级名称已保存')});
+$('#btnExport').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify({meta:state.meta,tomb:state.tomb,entries:state.entries.map(pickE)},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`写景方法清单_数据_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);
+  toast('数据已导出，发给老师即可合并');
+});
+$('#btnImport').addEventListener('click',()=>$('#importFile').click());
+$('#importFile').addEventListener('change',e=>{
+  const files=[...e.target.files];if(!files.length)return;
+  let pending=files.length,added=[];
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=()=>{try{
+      const d=JSON.parse(r.result);
+      const arr=Array.isArray(d)?d:(Array.isArray(d.entries)?d.entries:null);
+      if(arr){const{added:ids}=mergeRemote(arr,d.tomb,d.meta);added=added.concat(ids)}
+    }catch(err){}};
+    r.onloadend=()=>{if(--pending===0){save();renderAll(false);openModal();if(added.length)pushFeed(added);schedulePublish();toast(added.length?`汇总完成：新增 ${added.length} 条归纳`:'没有需要合并的新数据')}};
+    r.readAsText(f);
+  });
+  e.target.value='';
+});
+$('#btnSample').addEventListener('click',()=>{
+  const have=new Set(state.entries.map(x=>x.id));
+  const add=SAMPLES.filter(s=>!have.has(s.id)&&!state.tomb[s.id]);
+  if(!add.length){toast('示例数据已在列',1);return}
+  add.forEach(s=>delete state.tomb[s.id]);
+  state.entries.push(...add);
+  if(!state.meta.className)state.meta.className='初二（3）班';
+  save();renderAll(false);openModal();schedulePublish();
+  toast(`已载入 ${add.length} 条示例归纳${syncState==='on'?' · 已同步到全班':''}，正式使用前可「清空」`);
+});
+$('#btnClear').addEventListener('click',e=>{
+  const b=e.currentTarget;
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='再点一次，确认清空';setTimeout(()=>{b.classList.remove('arm');b.innerHTML='<svg class="ic"><use href="#i-trash"/></svg>清空本机数据'},2800);return}
+  state.entries.forEach(x=>state.tomb[x.id]=Date.now());
+  state.entries=[];save();renderAll(false);openModal();schedulePublish();
+  toast('已清空本机数据'+(syncState==='on'?' · 已同步到全班':''));
+});
+
+window.addEventListener('beforeunload',e=>{
+  if(!store.usable&&state.entries.length){e.preventDefault();e.returnValue=''}
+});
+
+/* ================= 启动 ================= */
+renderSpines();renderCats();renderHomeSug();renderTextFilter();
+renderAll(false);renderSyncChip();
+if(room)setTimeout(startSync,300); /* 本机已有课堂代号则自动连接 */
+</script>
+
+
+			
+		
+</body></html>
